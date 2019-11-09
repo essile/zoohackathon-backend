@@ -18,10 +18,20 @@ namespace ZoohackathonBackend.Controllers
     {
         // GET: api/Search
         [HttpGet]
-        public async Task<string> GetAsync(string sourceUrl, string searchWord)
+        public async Task<IActionResult> GetAsync(string sourceUrl, string searchWord)
         {
             //sourceUrl = "https://www.terraristik.com/tb/list_classifieds.php";
             //searchWord = "snake";
+
+            if (string.IsNullOrEmpty(searchWord))
+            {
+                return new BadRequestObjectResult("The search word is missing from the query.");
+            }
+
+            if (string.IsNullOrEmpty(sourceUrl))
+            {
+                return new BadRequestObjectResult("The url is missing from the query.");
+            }
 
             List<string> links = new List<string>();
 
@@ -60,9 +70,9 @@ namespace ZoohackathonBackend.Controllers
                 var searchWordContext = await GetContentAsync(client, sourceUrl, queryParam, searchWord);
                 if (searchWordContext == null) continue;
 
-                foreach(var result in searchWordContext)
+                foreach (var result in searchWordContext)
                 {
-                    if(!searchContentList.Any(item => item.TextContent == result.TextContent))
+                    if (!searchContentList.Any(item => item.TextContent == result.TextContent))
                     {
                         searchContentList.Add(result);
                     }
@@ -70,7 +80,13 @@ namespace ZoohackathonBackend.Controllers
                 }
             }
 
-            return JsonConvert.SerializeObject(searchContentList);
+            if (!searchContentList.Any())
+            {
+                return new NotFoundObjectResult($"No content was found from {sourceUrl} while searching for {searchWord}.");
+            }
+
+
+            return new OkObjectResult(JsonConvert.SerializeObject(searchContentList));
         }
 
         private async Task<List<SearchResult>> GetContentAsync(HttpClient client, string sourceUrl, string queryParam, string searchWord)
@@ -111,5 +127,6 @@ namespace ZoohackathonBackend.Controllers
 
             return resultsList;
         }
+
     }
 }
