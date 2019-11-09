@@ -59,7 +59,15 @@ namespace ZoohackathonBackend.Controllers
                 }
                 var searchWordContext = await GetContentAsync(client, sourceUrl, queryParam, searchWord);
                 if (searchWordContext == null) continue;
-                searchContentList.AddRange(searchWordContext);
+
+                foreach(var result in searchWordContext)
+                {
+                    if(!searchContentList.Any(item => item.TextContent == result.TextContent))
+                    {
+                        searchContentList.Add(result);
+                    }
+
+                }
             }
 
             return JsonConvert.SerializeObject(searchContentList);
@@ -89,8 +97,10 @@ namespace ZoohackathonBackend.Controllers
                         Url = url,
                         TextContent = node.InnerHtml.Trim().Replace("<br>", "").Replace("\n", "").Replace("\r", "").Replace("  ", "")
                     };
-                    resultsList.Add(searchResult);
-
+                    if (!resultsList.Any(a => string.Equals(a.TextContent, searchResult.TextContent, StringComparison.InvariantCultureIgnoreCase)))
+                    {
+                        resultsList.Add(searchResult);
+                    }
                 }
             }
 
