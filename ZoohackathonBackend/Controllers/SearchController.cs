@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using HtmlAgilityPack;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using ZoohackathonBackend.Models;
 
 namespace ZoohackathonBackend.Controllers
 {
@@ -16,7 +18,7 @@ namespace ZoohackathonBackend.Controllers
     {
         // GET: api/Search
         [HttpGet]
-        public async Task<IEnumerable<string>> GetAsync(string sourceUrl, string searchWord)
+        public async Task<string> GetAsync(string sourceUrl, string searchWord)
         {
             //sourceUrl = "https://www.terraristik.com/tb/list_classifieds.php";
             //searchWord = "snake";
@@ -44,7 +46,7 @@ namespace ZoohackathonBackend.Controllers
                 }
             }
 
-            var searchContentList = new List<string>();
+            var searchContentList = new List<SearchResult>();
 
             foreach (var link in contentArray.Where(a => a.Contains("?")))
             {
@@ -60,13 +62,13 @@ namespace ZoohackathonBackend.Controllers
                 searchContentList.AddRange(searchWordContext);
             }
 
-            return searchContentList;
+            return JsonConvert.SerializeObject(searchContentList);
         }
 
-        private async Task<List<string>> GetContentAsync(HttpClient client, string sourceUrl, string queryParam, string searchWord)
+        private async Task<List<SearchResult>> GetContentAsync(HttpClient client, string sourceUrl, string queryParam, string searchWord)
         {
-
-            var response = await client.GetAsync(sourceUrl + "?" + queryParam);
+            var url = sourceUrl + "?" + queryParam;
+            var response = await client.GetAsync(url);
             var pageContents = await response.Content.ReadAsStringAsync();
 
             HtmlDocument htmlDoc = new HtmlDocument();
@@ -77,16 +79,22 @@ namespace ZoohackathonBackend.Controllers
 
             var count = Regex.Matches(pageContents, searchWord).Count;
 
-            List<string> resultsList = new List<string>();
+            List<SearchResult> resultsList = new List<SearchResult>();
             foreach (var node in anchorNodes)
             {
                 if (node.InnerHtml.ToLower().Contains(searchWord.ToLower()))
                 {
-                    resultsList.Add(node.InnerHtml.Trim().Replace("  ", ""));
+                    SearchResult searchResult = new SearchResult
+                    {
+                        Url = url,
+                        TextContent = node.InnerHtml.Trim().Replace("<br>", "").Replace("\n", "").Replace("\r", "").Replace("  ", "")
+                    };
+                    resultsList.Add(searchResult);
+
                 }
             }
 
-            if(!resultsList.Any())
+            if (!resultsList.Any())
             {
                 return null;
             }
