@@ -22,11 +22,21 @@ namespace ZoohackathonBackend
         }
 
         public IConfiguration Configuration { get; }
+        readonly string ApprovedOrigins = "_approvedOrigins";
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+
+            services.AddCors(options =>
+            {
+                options.AddPolicy(ApprovedOrigins,
+                builder =>
+                {
+                    builder.WithOrigins("http://localhost:3000");
+                });
+            });
 
             services.AddSwaggerGen(c =>
             {
@@ -45,6 +55,8 @@ namespace ZoohackathonBackend
             {
                 app.UseHsts();
             }
+
+            app.UseCors(ApprovedOrigins);
 
             app.UseSwagger();
             app.UseSwaggerUI(c =>
