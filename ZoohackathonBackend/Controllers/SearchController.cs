@@ -28,70 +28,76 @@ namespace ZoohackathonBackend.Controllers
             //sourceUrl = "https://www.terraristik.com/tb/list_classifieds.php";
             //searchWord = "snake";
 
-            if (string.IsNullOrEmpty(searchWord))
+            try
             {
-                return new BadRequestObjectResult("The search word is missing from the query.");
-            }
-
-            if (string.IsNullOrEmpty(sourceUrl))
-            {
-                return new BadRequestObjectResult("The url is missing from the query.");
-            }
-
-            List<string> links = new List<string>();
-
-            HttpClient client = new HttpClient();
-            var response = await client.GetAsync(sourceUrl);
-            var pageContents = await response.Content.ReadAsStringAsync();
-
-            HtmlDocument htmlDoc = new HtmlDocument();
-            htmlDoc.LoadHtml(pageContents);
-
-            var contentArray = new List<string>();
-            var anchorNodes = htmlDoc.DocumentNode.SelectNodes("//a");
-            if (anchorNodes != null)
-            {
-                foreach (var anchorNode in anchorNodes)
+                if (string.IsNullOrEmpty(searchWord))
                 {
-                    string blaa = anchorNode.GetAttributeValue("href", "");
-                    if (!contentArray.Contains(blaa))
+                    return new BadRequestObjectResult("The search word is missing from the query.");
+                }
+
+                if (string.IsNullOrEmpty(sourceUrl))
+                {
+                    return new BadRequestObjectResult("The url is missing from the query.");
+                }
+
+                List<string> links = new List<string>();
+
+                HttpClient client = new HttpClient();
+                var response = await client.GetAsync(sourceUrl);
+                var pageContents = await response.Content.ReadAsStringAsync();
+
+                HtmlDocument htmlDoc = new HtmlDocument();
+                htmlDoc.LoadHtml(pageContents);
+
+                var contentArray = new List<string>();
+                var anchorNodes = htmlDoc.DocumentNode.SelectNodes("//a");
+                if (anchorNodes != null)
+                {
+                    foreach (var anchorNode in anchorNodes)
                     {
-                        contentArray.Add(blaa);
+                        string blaa = anchorNode.GetAttributeValue("href", "");
+                        if (!contentArray.Contains(blaa))
+                        {
+                            contentArray.Add(blaa);
+                        }
                     }
                 }
-            }
 
-            var searchContentList = new List<SearchResult>();
+                var searchContentList = new List<SearchResult>();
 
-            foreach (var link in contentArray.Where(a => a.Contains("?")))
-            {
-                var splitted = link.Split('?');
-                var urlmelkein = splitted[1].Split('>');
-                var queryParam = urlmelkein[0];
-                if (queryParam.Contains(" "))
+                foreach (var link in contentArray.Where(a => a.Contains("?")))
                 {
-                    continue;
-                }
-                var searchWordContext = await GetContentAsync(client, sourceUrl, queryParam, searchWord);
-                if (searchWordContext == null) continue;
-
-                foreach (var result in searchWordContext)
-                {
-                    if (!searchContentList.Any(item => item.TextContent == result.TextContent))
+                    var splitted = link.Split('?');
+                    var urlmelkein = splitted[1].Split('>');
+                    var queryParam = urlmelkein[0];
+                    if (queryParam.Contains(" "))
                     {
-                        searchContentList.Add(result);
+                        continue;
                     }
+                    var searchWordContext = await GetContentAsync(client, sourceUrl, queryParam, searchWord);
+                    if (searchWordContext == null) continue;
 
+                    foreach (var result in searchWordContext)
+                    {
+                        if (!searchContentList.Any(item => item.TextContent == result.TextContent))
+                        {
+                            searchContentList.Add(result);
+                        }
+
+                    }
                 }
-            }
 
-            if (!searchContentList.Any())
+                if (!searchContentList.Any())
+                {
+                    return new NotFoundObjectResult($"No content was found from {sourceUrl} while searching for {searchWord}.");
+                }
+
+                return new OkObjectResult(JsonConvert.SerializeObject(searchContentList));
+            }
+            catch (Exception exception)
             {
-                return new NotFoundObjectResult($"No content was found from {sourceUrl} while searching for {searchWord}.");
+                return new StatusCodeResult(500);
             }
-
-
-            return new OkObjectResult(JsonConvert.SerializeObject(searchContentList));
         }
 
         private async Task<List<SearchResult>> GetContentAsync(HttpClient client, string sourceUrl, string queryParam, string searchWord)
