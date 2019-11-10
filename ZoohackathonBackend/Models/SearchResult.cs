@@ -14,5 +14,7 @@ namespace ZoohackathonBackend.Models
         public string TextContent { get; set; }
         [JsonProperty("prize")]
         public double? Prize { get; set; }
+        [JsonProperty("currency")]
+        public string Currency { get; set; }
     }
 }

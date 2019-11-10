@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using HtmlAgilityPack;
@@ -16,6 +18,9 @@ namespace ZoohackathonBackend.Controllers
     [ApiController]
     public class SearchController : ControllerBase
     {
+
+        public List<string> currency = new List<string> { "euro", "eur ", "£", "€" };
+
         // GET: api/Search
         [HttpGet]
         public async Task<IActionResult> GetAsync(string sourceUrl, string searchWord)
@@ -108,13 +113,17 @@ namespace ZoohackathonBackend.Controllers
             {
                 if (node.InnerHtml.ToLower().Contains(searchWord.ToLower()))
                 {
+                    var sb = new StringBuilder();
+                    sb.Append(node.InnerHtml).Replace("<br>", " ").Replace("\n", " ").Replace("\r", " ").Replace("  ", "");
+
                     SearchResult searchResult = new SearchResult
                     {
                         Url = url,
-                        TextContent = node.InnerHtml.Trim().Replace("<br>", "").Replace("\n", "").Replace("\r", "").Replace("  ", "")
+                        TextContent = sb.ToString().Trim()
                     };
                     if (!resultsList.Any(a => string.Equals(a.TextContent, searchResult.TextContent, StringComparison.InvariantCultureIgnoreCase)))
                     {
+                        searchResult = ParsePriceAndCurrency(searchResult);
                         resultsList.Add(searchResult);
                     }
                 }
@@ -128,5 +137,48 @@ namespace ZoohackathonBackend.Controllers
             return resultsList;
         }
 
+        private SearchResult ParsePriceAndCurrency(SearchResult searchResult)
+        {
+            foreach (var curren in currency)
+            {
+                var textToParse = searchResult.TextContent.ToLower();
+                var count = Regex.Matches(textToParse, curren).Count;
+
+
+                if (count == 1)
+                {
+                    searchResult.Currency = curren;
+                    searchResult.Prize = FindPrize(textToParse, curren);
+
+
+                    break;
+                }
+            }
+            return searchResult;
+        }
+
+        private double? FindPrize(string textToParse, string currency)
+        {
+            var currencyIndex = textToParse.IndexOf(currency);
+            var startingIndex = 8;
+
+            if (currencyIndex < startingIndex)
+            {
+                startingIndex = currencyIndex;
+            }
+
+            var textContainingNumber = textToParse.Substring(currencyIndex - startingIndex, startingIndex);
+
+            var numberString = Regex.Split(textContainingNumber, @"[^0-9\.]+").Where(c => c != "." && c.Trim() != "").FirstOrDefault();
+
+            var isDouble = double.TryParse(numberString, NumberStyles.Any, CultureInfo.InvariantCulture, out double result);
+
+            if (isDouble)
+            {
+                return result;
+            }
+
+            return null;
+        }
     }
 }
