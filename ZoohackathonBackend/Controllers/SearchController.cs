@@ -120,7 +120,7 @@ namespace ZoohackathonBackend.Controllers
                 if (node.InnerHtml.ToLower().Contains(searchWord.ToLower()))
                 {
                     var sb = new StringBuilder();
-                    sb.Append(node.InnerHtml).Replace("<br>", " ").Replace("\n", " ").Replace("\r", " ").Replace("  ", "");
+                    sb.Append(node.InnerHtml).Replace("<br>", " ").Replace("\n", " ").Replace("\r", " ").Replace("  ", " ");
 
                     SearchResult searchResult = new SearchResult
                     {
